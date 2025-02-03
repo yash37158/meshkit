@@ -3,14 +3,15 @@ package github
 import (
 	"bufio"
 	"fmt"
-	"github.com/layer5io/meshkit/generators/models"
-	"github.com/layer5io/meshkit/utils"
-	"github.com/layer5io/meshkit/utils/helm"
-	"github.com/layer5io/meshkit/utils/walker"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/layer5io/meshkit/generators/models"
+	"github.com/layer5io/meshkit/utils"
+	"github.com/layer5io/meshkit/utils/helm"
+	"github.com/layer5io/meshkit/utils/walker"
 )
 
 type GitRepo struct {
@@ -38,14 +39,16 @@ func (gr GitRepo) GetContent() (models.Package, error) {
 	dirPath := filepath.Join(os.TempDir(), owner, repo, branch)
 	_ = os.MkdirAll(dirPath, 0755)
 	filePath := filepath.Join(dirPath, utils.GetRandomAlphabetsOfDigit(5))
-	fd, err := os.Create(filePath) // perform cleanup
+	fd, err := os.Create(filePath)
 	if err != nil {
+		os.RemoveAll(dirPath)
 		return nil, utils.ErrCreateFile(err, filePath)
 	}
 	br := bufio.NewWriter(fd)
 
 	defer func() {
-		_ = br.Flush()
+		br.Flush()
+		fd.Close()
 	}()
 	gw := gitWalker.
 		Owner(owner).
@@ -104,7 +107,7 @@ func fileInterceptor(br *bufio.Writer) walker.FileInterceptor {
 // Add more calrifying commment and entry inside docs.
 func dirInterceptor(br *bufio.Writer) walker.DirInterceptor {
 	return func(d walker.Directory) error {
-		err := helm.ConvertToK8sManifest(d.Path, br)
+		err := helm.ConvertToK8sManifest(d.Path, "", br)
 		if err != nil {
 			return err
 		}
